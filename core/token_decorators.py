@@ -1,6 +1,6 @@
 import jwt
 
-from django.http  import JsonResponse
+from django.http  import JsonResponse, HttpResponseRedirect
 
 from users.models       import User
 from wish_korea.settings import SECRET_KEY , ALGORITHM
@@ -20,5 +20,8 @@ def token_decorator(func):
 
         except User.DoesNotExist:
             return JsonResponse({'message' : 'INVALID_USER'}, status=401)
+
+        except jwt.exceptions.ExpiredSignatureError:
+            return HttpResponseRedirect('/users/signin')
             
     return wrapper

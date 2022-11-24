@@ -6,8 +6,10 @@ import jwt
 from django.http            import JsonResponse
 from django.views           import View
 from django.core.exceptions import ValidationError
+from django.core.cache      import cache
 
 from users.models        import User
+from orders.models       import Cart
 from wish_korea.settings import SECRET_KEY, ALGORITHM
 from core.validators     import (
     validate_names,
@@ -15,6 +17,7 @@ from core.validators     import (
     validate_password,
     validate_phone_number
 )
+from core.token import Token
 
 class SignUpView(View):
     def post(self, requst):
@@ -75,13 +78,28 @@ class SignInView(View):
 
             if not bcrypt.checkpw(password.encode('utf-8') , user.password.encode('utf-8')):
                 return JsonResponse({"message" : "Invalid User"}, status = 401)
+            
+            access_token  = Token('access_token').sign_token(user.id)
+            refresh_token = Token('refresh_token').sign_token(user.id)
 
-            token = jwt.encode({'user_id': user.id}, SECRET_KEY, ALGORITHM)
+            cache.set(access_token,refresh_token)
 
-            return JsonResponse({'token' : token}, status = 200)
+            Cart.objects.filter(id=user.id).delete()
+
+            return JsonResponse({'token' : access_token}, status = 200)
         
         except KeyError:
             return JsonResponse({'message' : 'Key Error'}, status = 400)
 
         except User.DoesNotExist:
             return JsonResponse({'message' : 'Ivalid User'}, status = 401)
+
+    def get(self, request):
+        try:
+            access_token     = request.headers.get('Authorization')
+            new_access_token = Token('access_token').sign_next_token(access_token)
+
+            return JsonResponse({'token' : new_access_token}, status = 200)
+
+        except Exception as e:
+            return JsonResponse({'message' : 'Signin Again'}, status = 400)
