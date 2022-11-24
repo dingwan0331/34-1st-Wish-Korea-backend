@@ -4,3 +4,6 @@ mysqlclient==2.1.0
 PyMySQL==1.0.2
 bcrypt==3.2.2
 PyJWT==2.4.0
+django-redis==5.2.0
+async-timeout==4.0.2
+redis==4.3.5
